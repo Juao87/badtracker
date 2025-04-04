@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>BadTracker</title>
+
+  <!-- Meta tags pour PWA -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Application de suivi de match de badminton">
+  <meta name="theme-color" content="#4a90e2">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BadTracker">
+
+  <!-- Liens vers le manifest et les icônes -->
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icons/icon-72x72.png" type="image/png">
+  <link rel="apple-touch-icon" href="./icons/icon-192x192.png">
+  
+  <!-- Splash screen pour iOS -->
+  <link rel="apple-touch-startup-image" href="./icons/icon-512x512.png">
+
+  <!-- Inclure Chart.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Inclure chartjs-plugin-datalabels via CDN (APRES Chart.js) -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <!-- Inclure jsPDF, jsPDF-AutoTable et html2canvas via CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <style>
+    /* MODIFICATION FOND BODY: Définition de l'animation du dégradé */
+    @keyframes animatedGradient {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* CSS Base */
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start; /* Commence par le haut */
+      align-items: center;
+      min-height: 100vh;
+      /* MODIFICATION FOND BODY: Remplacement du fond gris par un dégradé animé */
+      background: linear-gradient(-45deg, #a0d8ef, #4a90e2, #50e3c2, #87ceeb); /* Bleu clair, Bleu, Turquoise, Bleu ciel */
+      background-size: 400% 400%; /* Taille large pour l'animation */
+      animation: animatedGradient 15s ease infinite; /* Application de l'animation */
+      font-family: sans-serif;
+      padding: 10px 15px 15px 15px;
+      gap: 10px;
+      box-sizing: border-box;
+      touch-action: manipulation; /* Améliore la gestion tactile sur mobiles */
+      -webkit-tap-highlight-color: transparent; /* Supprime la surbrillance au toucher */
+      overscroll-behavior: none; /* Empêche le comportement de défilement natif */
+      margin: 0;
+    }
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 1200px; /* Largeur max globale */
+      gap: 10px;
+    }
+
+    /* Conteneur flex pour l'alignement */
+    .controls {
+      display: flex;
+      align-items: center; /* Alignement vertical */
+      justify-content: space-between; /* Pousse titre/bouton aux extrémités */
+      gap: 20px; /* Espace entre les éléments */
+      width: 100%;
+      max-width: 1090px; /* Largeur max pour correspondre au contenu aligné */
+      margin: 10px auto 15px auto; /* Réduit margin-top et margin-bottom */
+      padding: 0 10px; /* Ajouter un peu de padding latéral */
+      box-sizing: border-box;
+    }
+
+    /* Styles H2 ajustés */
+    .controls h2 {
+      font-family: "Comic Sans MS", cursive, sans-serif;
+      font-size: 1.8em;
+      font-weight: bold;
+      font-style: italic;
+      color: white;
+      background: linear-gradient(45deg, #4a90e2, #50e3c2);
+      padding: 6px 15px;
+      border-radius: 18px;
+      display: inline-block;
+      margin: 0 0 0 -30px; /* Marge négative à gauche conservée */
+      box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.2);
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+      order: 1;
+      text-align: center;
+      width: 180px;
+      flex-shrink: 0;
+    }
+
+
+    /* Scoreboard */
+    .score-board {
+        font-size: 1.8em;
+        font-weight: bold;
+        background-color: #333;
+        color: #fff;
+        padding: 8px 15px;
+        border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        width: auto;
+        order: 2;
+        flex-grow: 1;
+        flex-shrink: 1;
+        min-width: 200px;
+        margin: 0;
+    }
+    .score-board span.player-score-container {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 4px;
+        text-align: center;
+        flex-basis: 48%;
+        justify-content: space-between;
+    }
+    #scorePlayer1Container { background-color: #4a90e2; }
+    #scorePlayer2Container { background-color: #e74c3c; }
+    #setScorePlayer1, #setScorePlayer2 {
+        font-size: 0.8em;
+        opacity: 0.8;
+        margin: 0 2px;
+    }
+
+    /* Styles nom joueur */
+    .player-name { cursor: pointer; padding: 2px 4px; border-radius: 3px; transition: background-color 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; display: inline-block; }
+    .player-name:hover { background-color: rgba(255, 255, 255, 0.2); }
+    .player-name-input { background-color: rgba(255, 255, 255, 0.9); color: #333; border: none; border-radius: 3px; padding: 2px 4px; font-size: 0.9em; font-family: inherit; font-weight: bold; width: 130px; box-sizing: border-box; text-align: center; }
+
+    /* Bouton Set Suivant */
+    #nextSetButton {
+        padding: 10px 15px;
+        font-size: 1em;
+        cursor: pointer;
+        background-color: #5cb85c;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        transition: background-color 0.2s;
+        flex-shrink: 0;
+        margin: 0;
+        order: 3;
+        height: fit-content;
+        width: 180px;
+        text-align: center;
+    }
+    #nextSetButton:hover { background-color: #4cae4c; }
+    #nextSetButton:disabled { opacity: 0.6; cursor: not-allowed; }
+
+
+    /* --- CSS Jauge --- */
+
+    /* Conteneur Terrain et Jauges */
+    .court-and-gauges-container { display: flex; justify-content: center; align-items: flex-start; width: 100%; gap: 15px; flex-wrap: wrap; }
+    #courtArea { padding: 40px; background-color: #e0e0e0; display: inline-block; cursor: crosshair; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-radius: 5px; line-height: 0; position: relative; -webkit-tap-highlight-color: transparent; flex-shrink: 0; margin-top: 0; }
+    #badmintonCourt { background-color: #f8f8f8; max-width: 100%; height: auto; display: block; }
+    #markersOverlay { position: absolute; top: 40px; left: 40px; height: 305px; width: 670px; pointer-events: none; }
+    /* Styles Marqueurs */
+    .marker { pointer-events: none; position: absolute; transform: translate(-50%, -50%); box-sizing: border-box; }
+    .hit-marker { background-color: rgba(160, 216, 239, 0.7); border: 1px solid #3498db; width: 6px; height: 6px; border-radius: 50%; }
+    .impact-marker-in { background-color: rgba(243, 156, 18, 0.7); border: 1px solid #d35400; width: 10px; height: 10px; border-radius: 50%; }
+    .impact-marker-fault { width: 12px; height: 12px; }
+    .impact-marker-fault::before, .impact-marker-fault::after { content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 3px; background-color: red; transform-origin: center; margin-top: -1.5px; }
+    .impact-marker-fault::before { transform: rotate(45deg); } .impact-marker-fault::after { transform: rotate(-45deg); }
+
+    /* Groupe Jauge (Titre + Jauge) */
+    .gauge-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+      width: 180px;
+    }
+    .gauge-group-title {
+        font-size: 0.9em;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 0;
+        text-align: center;
+    }
+
+    /* Styles Jauges */
+    .mastery-gauge {
+        display: flex;
+        width: 100%;
+        height: 300px;
+        border: 1px solid #aaa;
+        background-color: #f8f8f8;
+        border-radius: 4px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .gauge-bar-container { width: 25px; height: 100%; position: relative; background: linear-gradient(to top, red 0%, red 25%, yellow 25%, yellow 50%, lime 50%, lime 75%, blue 75%, blue 100%); }
+    .gauge-cursor { position: absolute; bottom: 0%; left: 100%; width: 0; height: 0; border-top: 9px solid transparent; border-bottom: 9px solid transparent; border-left: 14px solid black; transform: translateY(50%); transition: bottom 0.4s ease-in-out, left 0.4s ease-in-out; z-index: 2; }
+    .gauge-labels-container {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 0 8px;
+        border-left: 1px solid #ccc;
+        position: relative;
+        overflow: hidden;
+    }
+    .gauge-label {
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8em;
+        text-align: center;
+        color: #444;
+        line-height: 1.2;
+        border-bottom: none;
+        padding: 5px 0;
+    }
+    .gauge-separator {
+      position: absolute;
+      background-color: black;
+      left: 0;
+      width: 100%;
+      height: 1px;
+      pointer-events: none;
+    }
+    .sep-25 { top: 75%; }
+    .sep-50 { top: 50%; }
+    .sep-75 { top: 25%; }
+
+    /* Conteneur Charts + Boutons Row */
+    .charts-and-buttons-row { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 20px; width: 100%; margin-top: 15px; }
+
+    /* Conteneur Boutons Annuler/Réinitialiser/Export */
+    .action-buttons-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+        position: relative;
+        z-index: 5;
+        margin-top: -10px;
+        margin-bottom: 10px;
+    }
+
+    /* Conteneurs Graphiques */
+    .chart-wrapper {
+        width: 100%;
+        max-width: 300px;
+        background: #fff;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        text-align: center;
+        flex-shrink: 0;
+        margin-top: 0;
+    }
+    .chart-wrapper h3 {
+        margin-top: 0;
+        margin-bottom: 10px;
+        font-size: 1.0em;
+        color: #333;
+        font-weight: bold;
+    }
+    .chart-wrapper canvas { max-width: 100%; height: auto; }
+
+    /* Bouton Annuler */
+    #undoButton { padding: 8px 12px; font-size: 0.9em; cursor: pointer; background-color: #f39c12; color: white; border: none; border-radius: 5px; transition: background-color 0.2s, opacity 0.3s; display: flex; align-items: center; gap: 5px; }
+    #undoButton:hover:not(:disabled) { background-color: #e67e22; }
+    #undoButton:disabled { opacity: 0.5; cursor: not-allowed; }
+    #undoButton::before { content: '↶'; font-size: 1.4em; line-height: 1; }
+
+    /* Bouton Reset */
+    #resetButton { padding: 10px 20px; font-size: 1.1em; cursor: pointer; background-color: #bdc3c7; color: white; border: none; border-radius: 5px; transition: background-color 0.2s; }
+    #resetButton:hover { background-color: #95a5a6; }
+
+    /* Styles pour le Timer */
+    .timer-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        max-width: 180px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        padding: 10px;
+        box-sizing: border-box;
+        background-color: #f8f9fa;
+    }
+    #timerDisplay { background-color: #a0d8ef; color: #333; padding: 8px 15px; font-size: 1.1em; font-weight: bold; border-radius: 5px; text-align: center; min-width: 100px; width: 100%; box-sizing: border-box; transition: background-color 0.3s, color 0.3s; }
+    #timerDisplay.timer-over-limit { background-color: #e74c3c; color: white; }
+    .timer-controls { display: flex; justify-content: center; gap: 10px; width: 100%; }
+    .timer-controls button { padding: 5px 10px; font-size: 0.9em; cursor: pointer; background-color: #dfe6e9; color: #333; border: 1px solid #b2bec3; border-radius: 4px; transition: background-color 0.2s; min-width: 60px; }
+    .timer-controls button:hover { background-color: #b2bec3; }
+    .timer-limit-container { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 0.8em; color: #555; width: 100%; }
+    #timerLimitInput { padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; width: 80px; text-align: center; font-size: 1em; }
+
+    /* Style pour le bouton d'export */
+    #exportPdfButton {
+        padding: 10px 15px;
+        font-size: 1em;
+        cursor: pointer;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        transition: background-color 0.2s, opacity 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        max-width: 180px;
+        justify-content: center;
+    }
+    #exportPdfButton:hover:not(:disabled) { background-color: #218838; }
+    #exportPdfButton:disabled { opacity: 0.65; cursor: not-allowed; }
+    #exportPdfButton span:first-of-type { margin-right: 8px; font-size: 1.2em; }
+
+    /* COPYRIGHT NOTICE: Nouveaux styles */
+    #copyright-notice {
+        font-size: 0.7em; /* Petite taille */
+        color: #6c757d;   /* Couleur gris discret */
+        text-align: center; /* Centré */
+        margin-top: 10px;  /* Espace après le bouton export */
+        width: 100%;       /* Pour occuper l'espace et centrer */
+        line-height: 1.3;  /* Espacement lignes */
+    }
+
+    /* Styles spécifiques pour PWA */
+    .install-prompt {
+        padding: 10px 15px;
+        margin: 10px 0;
+        background-color: #4a90e2;
+        color: white;
+        border-radius: 8px;
+        text-align: center;
+        display: none; /* Caché par défaut */
+        width: 100%;
+        max-width: 300px;
+    }
+    .install-prompt button {
+        margin-top: 8px;
+        padding: 5px 15px;
+        background-color: white;
+        color: #4a90e2;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    .offline-indicator {
+        position: fixed;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(51, 51, 51, 0.8);
+        color: white;
+        padding: 8px 15px;
+        border-radius: 5px;
+        font-size: 0.8em;
+        z-index: 1000;
+        display: none;
+    }
+
+
+    /* Media Queries */
+    @media (max-width: 1100px) {
+        .controls { max-width: 960px; gap: 15px; margin-top: 10px; }
+        .controls h2 { font-size: 1.6em; padding: 5px 12px; width: 150px; margin-left: -15px;}
+        #nextSetButton { padding: 8px 12px; font-size: 0.9em; width: 150px;}
+
+        .court-and-gauges-container { flex-direction: column; align-items: center; gap: 15px; }
+        #courtArea { margin-top: 0; }
+        .gauge-group { width: 250px; }
+        .mastery-gauge { width: 100%; height: 150px; flex-direction: column; }
+        .gauge-bar-container { width: 100%; height: 20px; background: linear-gradient(to right, red 0%, red 25%, yellow 25%, yellow 50%, lime 50%, lime 75%, blue 75%, blue 100%); }
+        .gauge-cursor { bottom: 100%; left: 0%; border-left: 9px solid transparent; border-right: 9px solid transparent; border-top: 14px solid black; transform: translateX(-50%); border-bottom: none; }
+        .gauge-labels-container { flex-direction: row; border-left: none; border-top: 1px solid #ccc; padding: 5px 0; width: 100%; box-sizing: border-box; }
+        .gauge-label { border-bottom: none; border-right: none; font-size: 0.7em; padding: 0 4px; }
+        .gauge-separator { top: 0; width: 1px; height: 100%; }
+        .sep-25 { left: 25%; } .sep-50 { left: 50%; } .sep-75 { left: 75%; }
+
+        .charts-and-buttons-row { flex-direction: column; align-items: center; gap: 10px; margin-top: 15px; }
+        .chart-wrapper { margin-top: 0; }
+        .chart-wrapper h3 { font-size: 1.0em; }
+        .action-buttons-container { gap: 8px; margin-top: 10px; }
+        #undoButton { padding: 6px 10px; font-size: 0.8em; }
+        #undoButton::before { font-size: 1.2em; }
+        #resetButton { padding: 8px 15px; font-size: 1em;}
+        .timer-container { max-width: 160px; padding: 8px; }
+        #timerDisplay { padding: 6px 12px; font-size: 1em;}
+        .timer-controls button { padding: 4px 8px; font-size: 0.8em; min-width: 50px;}
+        #exportPdfButton { padding: 8px 12px; font-size: 0.9em; max-width: 160px; }
+        #exportPdfButton span:first-of-type { font-size: 1.1em; }
+        /* COPYRIGHT NOTICE: Ajustement marge tablette */
+        #copyright-notice { font-size: 0.65em; margin-top: 8px; }
+    }
+
+    @media (max-width: 768px) {
+      .controls { gap: 10px; margin-top: 10px; }
+      .controls h2 { font-size: 1.5em; padding: 5px 10px; width: 120px; margin-left: -10px;}
+      #nextSetButton { padding: 7px 10px; font-size: 0.8em; width: 120px;}
+
+      .score-board { font-size: 1.4em; flex-grow: 1; }
+      .score-board span.player-score-container { flex-basis: auto; width: 100%; justify-content: space-between !important; font-size: 0.9em; gap: 5px; }
+      .player-name { max-width: 80px; }
+      .player-name-input { width: 70px; }
+      .chart-wrapper { max-width: 280px; }
+      .chart-wrapper h3 { font-size: 0.9em; }
+      .gauge-group { width: 90%; max-width: 250px; }
+      #exportPdfButton { max-width: 140px; }
+      .timer-container { max-width: 140px; }
+    }
+    @media (max-width: 480px) {
+      .controls { flex-wrap: wrap; justify-content: center; max-width: 100%; margin-top: 10px; }
+      .controls h2 { font-size: 1.2em; padding: 4px 8px; width: auto; margin-left: 0; margin-bottom: 10px;}
+      #nextSetButton { width: auto; margin-bottom: 10px; }
+      .score-board { order: 2; width: 90%; margin: 0 auto 10px auto; flex-grow: 0;}
+      #nextSetButton { order: 3; }
+
+      .score-board { font-size: 1.2em; }
+      .score-board span.player-score-container { gap: 3px; font-size: 0.8em;}
+      #setScorePlayer1, #setScorePlayer2 { font-size: 0.7em; margin: 0 1px;}
+      .player-name { max-width: 60px; }
+      .player-name-input { width: 55px; }
+      .mastery-gauge { height: auto; }
+      .gauge-labels-container { font-size: 0.9em; flex-wrap: wrap; justify-content: space-around; padding: 5px 0; }
+      .gauge-label { font-size: 0.65em; flex-basis: 45%; text-align: center; border-right: none; border-bottom: none; padding: 2px 4px; }
+      .gauge-separator { display: none; }
+
+      #courtArea { padding: 20px; margin-top: 10px; }
+      #markersOverlay { top: 20px; left: 20px; }
+      .timer-container { max-width: 140px; padding: 6px; }
+      #timerDisplay { font-size: 0.9em;}
+      .timer-controls button { font-size: 0.75em; min-width: 45px;}
+      .timer-limit-container { font-size: 0.75em; }
+      #timerLimitInput { width: 60px; }
+      .chart-wrapper { margin-top: 0; }
+      .chart-wrapper h3 { font-size: 0.8em; }
+      .gauge-group { width: 90%; }
+      #exportPdfButton { max-width: 140px; padding: 6px 10px; font-size: 0.8em; }
+      #exportPdfButton span:first-of-type { font-size: 1em; }
+      /* COPYRIGHT NOTICE: Ajustement taille/marge */
+      #copyright-notice { font-size: 0.6em; margin-top: 6px; }
+    }
+
+    /* Pour éviter le pull-to-refresh */
+    html, body {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+  <!-- Notification mode hors ligne -->
+  <div class="offline-indicator">Mode hors ligne activé</div>
+  <!-- Invitation à installer l'app -->
+  <div class="install-prompt" id="installPrompt">
+    Installez BadTracker sur votre appareil !
+    <button id="installButton">Installer</button>
+  </div>
+
+  <div class="main-content">
+      <div class="controls">
+          <h2>BadTracker</h2>
+          <div class="score-board">
+               <span id="scorePlayer1Container" class="player-score-container">
+                  <span id="playerName1" class="player-name" title="Cliquez pour modifier">Joueur 1</span>
+                  <input type="text" id="playerNameInput1" class="player-name-input" maxlength="15" style="display: none;">
+                  <span id="setScorePlayer1">(0)</span>
+                  <span id="scorePlayer1">0</span>
+                </span>
+                <span id="scorePlayer2Container" class="player-score-container">
+                  <span id="scorePlayer2">0</span>
+                  <span id="setScorePlayer2">(0)</span>
+                  <span id="playerName2" class="player-name" title="Cliquez pour modifier">Joueur 2</span>
+                  <input type="text" id="playerNameInput2" class="player-name-input" maxlength="15" style="display: none;">
+                </span>
+          </div>
+          <button id="nextSetButton">Set Suivant &raquo;</button>
+      </div>
+
+      <div class="court-and-gauges-container">
+          <div class="gauge-group player1-gauge-group">
+              <h4 class="gauge-group-title">NIVEAU DE MAITRISE J1</h4>
+              <div class="mastery-gauge player1-gauge">
+                  <div class="gauge-bar-container">
+                      <div id="cursorP1" class="gauge-cursor"></div>
+                  </div>
+                  <div class="gauge-labels-container">
+                      <div class="gauge-label level-tres-satisfaisant">Maîtrise Très Satisfaisante</div>
+                      <div class="gauge-label level-satisfaisant">Maîtrise Satisfaisante</div>
+                      <div class="gauge-label level-fragile">Maîtrise Fragile</div>
+                      <div class="gauge-label level-insufficient">Maîtrise Insuffisante</div>
+                      <!-- Séparateurs pour alignement précis -->
+                      <div class="gauge-separator sep-25"></div>
+                      <div class="gauge-separator sep-50"></div>
+                      <div class="gauge-separator sep-75"></div>
+                  </div>
+              </div>
+          </div>
+          <div id="courtArea">
+              <svg id="badmintonCourt" width="670" height="305" viewBox="0 0 670 305" xmlns="http://www.w3.org/2000/svg">
+                 <defs> <pattern id="netPattern" patternUnits="userSpaceOnUse" width="6" height="6"> <path d="M-1,1 l2,-2 M0,6 l6,-6 M5,7 l2,-2" stroke="rgba(150, 150, 150, 0.8)" stroke-width="0.7"/> </pattern> </defs> <rect x="102" y="85.5" width="134" height="134" fill="#ffcccc" stroke="gray" stroke-width="1" /> <rect x="434" y="85.5" width="134" height="134" fill="#ffcccc" stroke="gray" stroke-width="1" /> <rect x="0" y="0" width="670" height="305" fill="none" stroke="black" stroke-width="2" /> <line x1="335" y1="0" x2="335" y2="305" stroke="black" stroke-width="2" stroke-dasharray="10,5" /> <line x1="236" y1="0" x2="236" y2="305" stroke="black" stroke-width="2" /> <line x1="434" y1="0" x2="434" y2="305" stroke="black" stroke-width="2" /> <line x1="0" y1="23" x2="335" y2="23" stroke="black" stroke-width="2" /> <line x1="0" y1="282" x2="335" y2="282" stroke="black" stroke-width="2" /> <line x1="0" y1="152.5" x2="236" y2="152.5" stroke="black" stroke-width="2" /> <line x1="335" y1="23" x2="670" y2="23" stroke="black" stroke-width="2" /> <line x1="335" y1="282" x2="670" y2="282" stroke="black" stroke-width="2" /> <line x1="434" y1="152.5" x2="670" y2="152.5" stroke="black" stroke-width="2" /> <line x1="23" y1="0" x2="23" y2="305" stroke="black" stroke-width="2" /> <line x1="647" y1="0" x2="647" y2="305" stroke="black" stroke-width="2" /> <rect x="312.5" y="0" width="22.5" height="305" fill="rgba(200, 200, 200, 0.7)" /> <rect x="312.5" y="0" width="22.5" height="305" fill="url(#netPattern)" /> <rect x="335" y="0" width="22.5" height="305" fill="rgba(200, 200, 200, 0.7)" /> <rect x="335" y="0" width="22.5" height="305" fill="url(#netPattern)" /> <line x1="312.5" y1="0" x2="312.5" y2="305" stroke="black" stroke-width="1" stroke-dasharray="4,4" /> <line x1="357.5" y1="0" x2="357.5" y2="305" stroke="black" stroke-width="1" stroke-dasharray="4,4" />
+              </svg>
+              <div id="markersOverlay"></div>
+          </div>
+           <div class="gauge-group player2-gauge-group">
+              <h4 class="gauge-group-title">NIVEAU DE MAITRISE J2</h4>
+              <div class="mastery-gauge player2-gauge">
+                  <div class="gauge-bar-container">
+                      <div id="cursorP2" class="gauge-cursor"></div>
+                  </div>
+                  <div class="gauge-labels-container">
+                      <div class="gauge-label level-tres-satisfaisant">Maîtrise Très Satisfaisante</div>
+                      <div class="gauge-label level-satisfaisant">Maîtrise Satisfaisante</div>
+                      <div class="gauge-label level-fragile">Maîtrise Fragile</div>
+                      <div class="gauge-label level-insufficient">Maîtrise Insuffisante</div>
+                       <!-- Séparateurs pour alignement précis -->
+                      <div class="gauge-separator sep-25"></div>
+                      <div class="gauge-separator sep-50"></div>
+                      <div class="gauge-separator sep-75"></div>
+                  </div>
+              </div>
+          </div>
+      </div>
+      <div class="charts-and-buttons-row">
+           <div class="chart-wrapper" id="chartWrapperP1">
+                <h3 id="chartTitlePlayer1">[J1] Joueur 1 - Analyse</h3>
+                <canvas id="chartPlayer1"></canvas>
+            </div>
+            <div class="action-buttons-container">
+                <button id="undoButton" disabled><span>Annuler</span></button>
+                <button id="resetButton">Réinitialiser</button>
+                <div class="timer-container">
+                    <div id="timerDisplay">00:00</div>
+                    <div class="timer-controls">
+                        <button id="timerStartPauseButton">▶️ Start</button>
+                        <button id="timerResetButtonTimer">⏹️ Reset</button>
+                    </div>
+                    <div class="timer-limit-container">
+                        <label for="timerLimitInput">Limite (min):</label>
+                        <input type="number" id="timerLimitInput" min="0" step="1" placeholder="Aucune">
+                    </div>
+                </div>
+                <button id="exportPdfButton">Exporter les stats</button>
+                <!-- COPYRIGHT NOTICE: Ajout du texte -->
+                <div id="copyright-notice">
+                    by NUMEPS<br>
+                    tous les droits réservés
+                </div>
+            </div>
+           <div class="chart-wrapper" id="chartWrapperP2">
+               <h3 id="chartTitlePlayer2">[J2] Joueur 2 - Analyse</h3>
+               <canvas id="chartPlayer2"></canvas>
+            </div>
+      </div>
+  </div>
+
+  <script>
+    // JavaScript INCHANGÉ
+    const { jsPDF } = window.jspdf;
+    if (typeof ChartDataLabels !== 'undefined') { Chart.register(ChartDataLabels); } else { console.error("ChartDataLabels plugin not found."); }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const courtArea = document.getElementById('courtArea');
+      const svgCourt = document.getElementById('badmintonCourt');
+      const markersOverlay = document.getElementById('markersOverlay');
+      const scorePlayer1Display = document.getElementById('scorePlayer1');
+      const scorePlayer2Display = document.getElementById('scorePlayer2');
+      const resetButton = document.getElementById('resetButton');
+      const chartPlayer1CanvasEl = document.getElementById('chartPlayer1');
+      const chartPlayer2CanvasEl = document.getElementById('chartPlayer2');
+      const chartWrapperP1 = document.getElementById('chartWrapperP1');
+      const chartWrapperP2 = document.getElementById('chartWrapperP2');
+      const chartPlayer1Canvas = chartPlayer1CanvasEl.getContext('2d');
+      const chartPlayer2Canvas = chartPlayer2CanvasEl.getContext('2d');
+      const cursorP1 = document.getElementById('cursorP1');
+      const cursorP2 = document.getElementById('cursorP2');
+      const undoButton = document.getElementById('undoButton');
+      const playerName1Display = document.getElementById('playerName1');
+      const playerName2Display = document.getElementById('playerName2');
+      const playerName1Input = document.getElementById('playerNameInput1');
+      const playerName2Input = document.getElementById('playerNameInput2');
+      const timerDisplay = document.getElementById('timerDisplay');
+      const timerStartPauseButton = document.getElementById('timerStartPauseButton');
+      const timerResetButton = document.getElementById('timerResetButtonTimer');
+      const timerLimitInput = document.getElementById('timerLimitInput');
+      const setScorePlayer1Display = document.getElementById('setScorePlayer1');
+      const setScorePlayer2Display = document.getElementById('setScorePlayer2');
+      const nextSetButton = document.getElementById('nextSetButton');
+      const exportPdfButton = document.getElementById('exportPdfButton');
+      const chartTitlePlayer1 = document.getElementById('chartTitlePlayer1');
+      const chartTitlePlayer2 = document.getElementById('chartTitlePlayer2');
+
+      let scorePlayer1 = 0;
+      let scorePlayer2 = 0;
+      let setsPlayer1 = 0;
+      let setsPlayer2 = 0;
+      let statistics = {};
+      let chartP1Instance = null;
+      let chartP2Instance = null;
+      let actionHistory = [];
+      const MAX_HISTORY_SIZE = 10;
+      const LONG_PRESS_DURATION = 500;
+      let pressTimer = null;
+      let startCoords = null;
+      let playerName1 = "Joueur 1";
+      let playerName2 = "Joueur 2";
+      let timerInterval = null;
+      let timerSeconds = 0;
+      let timerRunning = false;
+      let timeLimitSeconds = 0;
+
+      const NET_X = 335; const NET_AREA_LEFT_BOUNDARY = 312.5; const NET_AREA_RIGHT_BOUNDARY = 357.5; const LEFT_SHORT_SERVICE_X = 236; const RIGHT_SHORT_SERVICE_X = 434; const LEFT_SINGLES_BACK_LINE_X = 23; const RIGHT_SINGLES_BACK_LINE_X = 647; const TOP_SINGLES_SIDE_LINE_Y = 23; const BOTTOM_SINGLES_SIDE_LINE_Y = 282; const CENTER_LINE_Y = 152.5; const LEFT_DOUBLES_BACK_LINE_X = 0; const RIGHT_DOUBLES_BACK_LINE_X = 670; const TOP_DOUBLES_SIDE_LINE_Y = 0; const BOTTOM_DOUBLES_SIDE_LINE_Y = 305; const RED_SQUARE_LEFT = { x: 102, y: 85.5, width: 134, height: 134 }; const RED_SQUARE_RIGHT = { x: 434, y: 85.5, width: 134, height: 134 }; const LEFT_BACK_ALLEY_RECT_ZONE = 'LEFT_BACK_ALLEY_RECT'; const RIGHT_BACK_ALLEY_RECT_ZONE = 'RIGHT_BACK_ALLEY_RECT'; const NET_ZONE_LEFT = 'NET_ZONE_LEFT_EXTENDED'; const NET_ZONE_RIGHT = 'NET_ZONE_RIGHT_EXTENDED';
+
+      function updateUndoButtonState() { undoButton.disabled = actionHistory.length === 0; }
+      function saveStateBeforeAction(markerElement, actionType = 'point') { const statsSnapshot = JSON.parse(JSON.stringify(statistics)); const historyEntry = { scoreP1: scorePlayer1, scoreP2: scorePlayer2, setsP1: setsPlayer1, setsP2: setsPlayer2, statsSnapshot: statsSnapshot, markerElement: markerElement, actionType: actionType, p1Name: playerName1, p2Name: playerName2 }; actionHistory.push(historyEntry); if (actionHistory.length > MAX_HISTORY_SIZE) { actionHistory.shift(); } updateUndoButtonState(); }
+      function initializeStats() { statistics = { rawZones: {}, player1: { hitsReceived: { comfort: 0, validOther: 0, invalid: 0, total: 0 }, impactsMade: { comfort: 0, validOther: 0, invalidFault: 0, total: 0 } }, player2: { hitsReceived: { comfort: 0, validOther: 0, invalid: 0, total: 0 }, impactsMade: { comfort: 0, validOther: 0, invalidFault: 0, total: 0 } }, scoreP1: 0, scoreP2: 0, faultsByP1: 0, faultsByP2: 0, totalHits: 0, totalImpacts: 0 }; }
+      function getZoneClassification(x, y) { if (x < LEFT_DOUBLES_BACK_LINE_X || x >= RIGHT_DOUBLES_BACK_LINE_X || y < TOP_DOUBLES_SIDE_LINE_Y || y >= BOTTOM_DOUBLES_SIDE_LINE_Y) return { category: 'invalid', rawZone: 'OUT_OF_BOUNDS_MARGIN', isIn: false }; if (x >= NET_AREA_LEFT_BOUNDARY && x < NET_AREA_RIGHT_BOUNDARY) return { category: 'invalid', rawZone: (x < NET_X) ? NET_ZONE_LEFT : NET_ZONE_RIGHT, isIn: false }; if ((x >= RED_SQUARE_LEFT.x && x < RED_SQUARE_LEFT.x + RED_SQUARE_LEFT.width && y >= RED_SQUARE_LEFT.y && y < RED_SQUARE_LEFT.y + RED_SQUARE_LEFT.height) || (x >= RED_SQUARE_RIGHT.x && x < RED_SQUARE_RIGHT.x + RED_SQUARE_RIGHT.width && y >= RED_SQUARE_RIGHT.y && y < RED_SQUARE_RIGHT.y + RED_SQUARE_RIGHT.height)) return { category: 'comfort', rawZone: 'RED_ZONE', isIn: true }; if (y < TOP_SINGLES_SIDE_LINE_Y || y >= BOTTOM_SINGLES_SIDE_LINE_Y) return { category: 'invalid', rawZone: `${x < NET_X ? 'LEFT' : 'RIGHT'}_SIDE_ALLEY_${y < TOP_SINGLES_SIDE_LINE_Y ? 'TOP' : 'BOTTOM'}`, isIn: false }; if (x >= LEFT_DOUBLES_BACK_LINE_X && x < LEFT_SINGLES_BACK_LINE_X && y >= TOP_SINGLES_SIDE_LINE_Y && y < BOTTOM_SINGLES_SIDE_LINE_Y) return { category: 'validOther', rawZone: LEFT_BACK_ALLEY_RECT_ZONE, isIn: true }; if (x >= RIGHT_SINGLES_BACK_LINE_X && x < RIGHT_DOUBLES_BACK_LINE_X && y >= TOP_SINGLES_SIDE_LINE_Y && y < BOTTOM_SINGLES_SIDE_LINE_Y) return { category: 'validOther', rawZone: RIGHT_BACK_ALLEY_RECT_ZONE, isIn: true }; let rawZoneName = 'UNKNOWN_VALID'; if (x < NET_X) { if (x >= LEFT_SINGLES_BACK_LINE_X && x < LEFT_SHORT_SERVICE_X) rawZoneName = 'LEFT_BACK_COURT'; else if (x >= LEFT_SHORT_SERVICE_X && x < NET_AREA_LEFT_BOUNDARY) rawZoneName = y < CENTER_LINE_Y ? 'LEFT_SERVICE_BOX_TOP' : 'LEFT_SERVICE_BOX_BOTTOM'; } else { if (x >= NET_AREA_RIGHT_BOUNDARY && x < RIGHT_SHORT_SERVICE_X) rawZoneName = y < CENTER_LINE_Y ? 'RIGHT_SERVICE_BOX_TOP' : 'RIGHT_SERVICE_BOX_BOTTOM'; else if (x >= RIGHT_SHORT_SERVICE_X && x < RIGHT_SINGLES_BACK_LINE_X) rawZoneName = 'RIGHT_BACK_COURT'; } if (rawZoneName !== 'UNKNOWN_VALID') return { category: 'validOther', rawZone: rawZoneName, isIn: true }; console.warn("Zone non classifiée trouvée DANS les limites du simple pour coords:", x, y); return { category: 'invalid', rawZone: 'UNKNOWN_INSIDE_SINGLES', isIn: false }; }
+      function recordStat(playerContext, eventType, classification) { const { category, rawZone, isIn } = classification; if (!category || !rawZone) { console.error("Stat classification invalide:", classification); return; } const playerStats = (playerContext === 'P1') ? statistics.player1 : statistics.player2; const statsBucket = playerStats[eventType]; if (statsBucket) { if (category === 'comfort') statsBucket.comfort++; else if (category === 'validOther') statsBucket.validOther++; else if (category === 'invalid') { if(eventType === 'hitsReceived') statsBucket.invalid++; else statsBucket.invalidFault++; } statsBucket.total++; } else { console.error(`Stats bucket introuvable: ${playerContext} - ${eventType}`); } if (eventType === 'hitsReceived') statistics.totalHits++; else statistics.totalImpacts++; if (!statistics.rawZones[rawZone]) { statistics.rawZones[rawZone] = { hits: 0, impactsIn: 0, impactsFault: 0 }; } const zoneData = statistics.rawZones[rawZone]; if (eventType === 'hitsReceived') { zoneData.hits++; } else { if (isIn) zoneData.impactsIn++; else zoneData.impactsFault++; } }
+      function initializeCharts() { const chartOptions={responsive:!0,maintainAspectRatio:true,animation:false,plugins:{legend:{position:"bottom"},tooltip:{callbacks:{label:function(e){let t=e.label||"";t&&(t+=": ");const a=e.parsed,l=e.dataset.data.reduce((e,t)=>e+t,0),n=l>0?Math.round(a/l*100):0;return t+=`${a} (${n}%)`,t}}},datalabels:{formatter:(e,t)=>{const a=t.chart.data.datasets[0].data.reduce((e,t)=>e+t,0);if(0===a||0===e)return"0%";const l=e/a*100;return l>0.01?l.toFixed(0)+"%":""},color:"#ffffff",font:{weight:"bold"},anchor:"center",align:"center"}}};const labels=["Zone Confort","Zone Excentrée","Hors Limites/Faute"],backgroundColors=["#ff6666","#66cc66","#cccccc"],borderColors=["#ffffff","#ffffff","#ffffff"];chartP1Instance&&chartP1Instance.destroy(),chartP2Instance&&chartP2Instance.destroy();chartP1Instance=new Chart(chartPlayer1Canvas,{type:"pie",data:{labels:labels,datasets:[{label:"Joueur 1 - Analyse",data:[0,0,0],backgroundColor:backgroundColors,borderColor:borderColors,borderWidth:1}]},options:chartOptions}),chartP2Instance=new Chart(chartPlayer2Canvas,{type:"pie",data:{labels:labels,datasets:[{label:"Joueur 2 - Analyse",data:[0,0,0],backgroundColor:backgroundColors,borderColor:borderColors,borderWidth:1}]},options:chartOptions}),updateMasteryGauges(0,0); }
+      function updateMasteryGauges(percentP1, percentP2) { if(!cursorP1||!cursorP2)return;function calculateCursorPosition(e){let t=0;return t=e<=20?e/20*25:e<=40?25+(e-20)/20*25:e<=60?50+(e-40)/20*25:75+(e-60)/40*25,Math.min(Math.max(t,2),98)}function calculateCursorPositionMobile(e){let t=0;return t=e<=20?e/20*25:e<=40?25+(e-20)/20*25:e<=60?50+(e-40)/20*25:75+(e-60)/40*25,Math.min(Math.max(t,2),98)}const isMobileView=window.innerWidth<=1100;isMobileView?(cursorP1.style.left=calculateCursorPositionMobile(percentP1)+"%",cursorP2.style.left=calculateCursorPositionMobile(percentP2)+"%",cursorP1.style.bottom="",cursorP2.style.bottom=""):(cursorP1.style.bottom=calculateCursorPosition(percentP1)+"%",cursorP2.style.bottom=calculateCursorPosition(percentP2)+"%",cursorP1.style.left="",cursorP2.style.left=""); }
+      function updateCharts() { if(!chartP1Instance||!chartP2Instance)return;const dataP1=[statistics.player2.hitsReceived.comfort+statistics.player1.impactsMade.comfort,statistics.player2.hitsReceived.validOther+statistics.player1.impactsMade.validOther,statistics.player2.hitsReceived.invalid+statistics.player1.impactsMade.invalidFault];chartP1Instance.data.datasets[0].data=dataP1,chartP1Instance.update('none');const dataP2=[statistics.player1.hitsReceived.comfort+statistics.player2.impactsMade.comfort,statistics.player1.hitsReceived.validOther+statistics.player2.impactsMade.validOther,statistics.player1.hitsReceived.invalid+statistics.player2.impactsMade.invalidFault];chartP2Instance.data.datasets[0].data=dataP2,chartP2Instance.update('none');const sumP1=dataP1.reduce((e,t)=>e+t,0),percentExcentreesP1=sumP1>0?dataP1[1]/sumP1*100:0;const sumP2=dataP2.reduce((e,t)=>e+t,0),percentExcentreesP2=sumP2>0?dataP2[1]/sumP2*100:0;updateMasteryGauges(percentExcentreesP1,percentExcentreesP2); }
+      function updateScoreDisplay() { scorePlayer1Display.textContent = scorePlayer1; scorePlayer2Display.textContent = scorePlayer2; if(setScorePlayer1Display) setScorePlayer1Display.textContent = `(${setsPlayer1})`; if(setScorePlayer2Display) setScorePlayer2Display.textContent = `(${setsPlayer2})`; statistics.scoreP1 = scorePlayer1; statistics.scoreP2 = scorePlayer2; }
+      function addVisualMarker(relativeX, relativeY, type) { const marker = document.createElement('div'); marker.classList.add('marker'); if (type === 'hit') marker.classList.add('hit-marker'); else if (type === 'impact-in') marker.classList.add('impact-marker-in'); else marker.classList.add('impact-marker-fault'); marker.style.left = `${relativeX}px`; marker.style.top = `${relativeY}px`; markersOverlay.appendChild(marker); return marker; }
+      function handleShortClick(coords) { if (coords.svgX >= NET_AREA_LEFT_BOUNDARY && coords.svgX < NET_AREA_RIGHT_BOUNDARY) { return; } const markerElement = addVisualMarker(coords.relativeX, coords.relativeY, 'hit'); saveStateBeforeAction(markerElement, 'point'); const classification = getZoneClassification(coords.svgX, coords.svgY); const receivingPlayer = (coords.svgX < NET_X) ? 'P1' : 'P2'; recordStat(receivingPlayer, 'hitsReceived', classification); updateCharts(); }
+      function handleLongPress(coords) { let pointWinner = null; let faultCommittedBy = null; let markerType = ''; let effectiveIsIn = false; let statClassification; let rawZone; let playerContextForStat = null; if (coords.svgX >= NET_AREA_LEFT_BOUNDARY && coords.svgX < NET_AREA_RIGHT_BOUNDARY) { effectiveIsIn = false; markerType = 'impact-fault'; if (coords.svgX < NET_X) { pointWinner = 'P2'; faultCommittedBy = 'P1'; rawZone = NET_ZONE_LEFT; playerContextForStat = 'P1'; } else { pointWinner = 'P1'; faultCommittedBy = 'P2'; rawZone = NET_ZONE_RIGHT; playerContextForStat = 'P2'; } statClassification = { category: 'invalid', rawZone: rawZone, isIn: false }; } else { const classification = getZoneClassification(coords.svgX, coords.svgY); rawZone = classification.rawZone; effectiveIsIn = classification.isIn; const impactingPlayer = (coords.svgX < NET_X) ? 'P2' : 'P1'; const opponentPlayer = (impactingPlayer === 'P1') ? 'P2' : 'P1'; if (effectiveIsIn) { pointWinner = impactingPlayer; markerType = 'impact-in'; faultCommittedBy = null; } else { faultCommittedBy = impactingPlayer; pointWinner = opponentPlayer; markerType = 'impact-fault'; } statClassification = classification; playerContextForStat = impactingPlayer; } const markerElement = addVisualMarker(coords.relativeX, coords.relativeY, markerType); saveStateBeforeAction(markerElement, 'point'); if (pointWinner === 'P1') { scorePlayer1++; } else if (pointWinner === 'P2') { scorePlayer2++; } updateScoreDisplay(); if(playerContextForStat) { recordStat(playerContextForStat, 'impactsMade', statClassification); } else { console.error("Impossible d'enregistrer la stat d'impact: playerContextForStat non défini", coords); } updateCharts(); }
+      function getSVGCoordinates(event) { let t=null;event.touches&&event.touches.length>0?t=event.touches[0]:event.changedTouches&&event.changedTouches.length>0&&(t=event.changedTouches[0]);const e=t?t.clientX:event.clientX,o=t?t.clientY:event.clientY;if("number"!=typeof e||"number"!=typeof o)return console.error("Coords client invalides:",event),null;const n=courtArea.getBoundingClientRect(),a=svgCourt.getBoundingClientRect(),r=svgCourt.viewBox.baseVal;if(!a||0===a.width||0===a.height||!r)return console.error("Dims SVG/ViewBox invalides ou non prêtes:",a,r),null;const i=e-n.left,l=o-n.top,d=a.left-n.left,s=a.top-n.top,c=i-d,p=l-s,h=c*(r.width/a.width)+r.x,u=p*(r.height/a.height)+r.y,f=40,m=40,g=i-f,v=l-m;return{svgX:h,svgY:u,relativeX:g,relativeY:v} }
+      function handlePressStart(event) { if(event.type.startsWith("touch"))event.preventDefault();if(!(startCoords=getSVGCoordinates(event)))return console.warn("Coords départ invalides."),void(startCoords=null);clearTimeout(pressTimer),pressTimer=setTimeout(()=>{startCoords&&handleLongPress(startCoords),pressTimer=null,startCoords=null},LONG_PRESS_DURATION); }
+      function handlePressEnd(event) { if(event.type.startsWith("touch"))event.preventDefault();if(null!==pressTimer&&startCoords){clearTimeout(pressTimer),pressTimer=null;const e=getSVGCoordinates(event);if(!e)return console.warn("Coords fin invalides."),void(startCoords=null);const t=e.svgX-startCoords.svgX,o=e.svgY-startCoords.svgY;Math.sqrt(t*t+o*o)<10?handleShortClick(e):console.log("Mouvement > 10px (SVG), annulation clic court")}startCoords=null; }
+      function handleLeaveOrCancel(event) { pressTimer&&(clearTimeout(pressTimer),pressTimer=null,console.log("Appui annulé (leave/cancel)")),startCoords=null; }
+      function undoLastAction() { if (actionHistory.length === 0) { console.log("Aucune action à annuler."); return; } const lastState = actionHistory.pop(); scorePlayer1 = lastState.scoreP1; scorePlayer2 = lastState.scoreP2; setsPlayer1 = lastState.setsP1; setsPlayer2 = lastState.setsP2; playerName1 = lastState.p1Name; playerName2 = lastState.p2Name; statistics = JSON.parse(JSON.stringify(lastState.statsSnapshot)); if (lastState.actionType === 'point' && lastState.markerElement) { if (lastState.markerElement.parentNode === markersOverlay) { markersOverlay.removeChild(lastState.markerElement); } else { console.warn("Marqueur à supprimer non trouvé ou déjà supprimé pour l'action annulée."); } } else if (lastState.actionType === 'next_set') { console.log("Annulation de l'action 'Set Suivant'"); } updateScoreDisplay(); updatePlayerNameDisplays(); updateCharts(); updateChartTitles(); updateUndoButtonState(); console.log("Dernière action annulée."); }
+      function resetGame() { if (confirm("Êtes-vous sûr de vouloir réinitialiser le match et les statistiques ?")) { scorePlayer1 = 0; scorePlayer2 = 0; setsPlayer1 = 0; setsPlayer2 = 0; playerName1 = "Joueur 1"; playerName2 = "Joueur 2"; initializeStats(); updateScoreDisplay(); updatePlayerNameDisplays(); initializeCharts(); while (markersOverlay.firstChild) { markersOverlay.removeChild(markersOverlay.firstChild); } clearTimeout(pressTimer); pressTimer = null; startCoords = null; actionHistory = []; updateUndoButtonState(); resetTimer(); timerLimitInput.value = ''; timeLimitSeconds = 0; updateChartTitles(); console.log("Jeu réinitialisé."); } }
+      function updatePlayerNameDisplays() { playerName1Display.textContent = playerName1; playerName2Display.textContent = playerName2; }
+      function editName(playerIndex) { const nameDisplay = (playerIndex === 1) ? playerName1Display : playerName2Display; const nameInput = (playerIndex === 1) ? playerName1Input : playerName2Input; const currentName = (playerIndex === 1) ? playerName1 : playerName2; nameInput.value = currentName; nameDisplay.style.display = 'none'; nameInput.style.display = 'inline-block'; nameInput.focus(); nameInput.select(); const saveHandler = () => { saveName(playerIndex, nameInput, nameDisplay); nameInput.removeEventListener('blur', saveHandler); nameInput.removeEventListener('keydown', keydownHandler); }; const keydownHandler = (event) => { if (event.key === 'Enter') { event.preventDefault(); saveHandler(); } else if (event.key === 'Escape') { nameInput.style.display = 'none'; nameDisplay.style.display = 'inline-block'; nameInput.removeEventListener('blur', saveHandler); nameInput.removeEventListener('keydown', keydownHandler); } }; nameInput.addEventListener('blur', saveHandler); nameInput.addEventListener('keydown', keydownHandler); }
+      function saveName(playerIndex, inputElement, displayElement) { let newName = inputElement.value.trim(); if (!newName) { newName = (playerIndex === 1) ? "Joueur 1" : "Joueur 2"; } newName = newName.substring(0, 15); if (playerIndex === 1) { playerName1 = newName; } else { playerName2 = newName; } displayElement.textContent = newName; inputElement.style.display = 'none'; displayElement.style.display = 'inline-block'; updateChartTitles(); }
+      function formatTime(totalSeconds) { const minutes = Math.floor(totalSeconds / 60); const seconds = totalSeconds % 60; return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`; }
+      function updateTimerDisplay() { if (!timerDisplay) return; timerDisplay.textContent = formatTime(timerSeconds); timerDisplay.classList.toggle('timer-over-limit', timeLimitSeconds > 0 && timerSeconds > timeLimitSeconds); }
+      function startTimer() { if (timerRunning || !timerStartPauseButton) return; timerRunning = true; timerStartPauseButton.textContent = '⏸️ Pause'; timerInterval = setInterval(() => { timerSeconds++; updateTimerDisplay(); }, 1000); }
+      function pauseTimer() { if (!timerRunning || !timerStartPauseButton) return; timerRunning = false; timerStartPauseButton.textContent = '▶️ Start'; clearInterval(timerInterval); timerInterval = null; }
+      function resetTimer() { pauseTimer(); timerSeconds = 0; updateTimerDisplay(); }
+      function handleStartPauseClick() { if (timerRunning) { pauseTimer(); } else { startTimer(); } }
+      function handleLimitChange() { if (!timerLimitInput) return; const limitMinutes = parseInt(timerLimitInput.value, 10); if (isNaN(limitMinutes) || limitMinutes < 0) { timeLimitSeconds = 0; timerLimitInput.value = ''; timerLimitInput.placeholder = "Aucune"; } else { timeLimitSeconds = limitMinutes * 60; timerLimitInput.placeholder = "Limite: " + limitMinutes + " min"; } updateTimerDisplay(); }
+      function handleNextSet() { saveStateBeforeAction(null, 'next_set'); if (scorePlayer1 > scorePlayer2) { setsPlayer1++; console.log(`Set gagné par ${playerName1}. Score sets: ${setsPlayer1}-${setsPlayer2}`); } else if (scorePlayer2 > scorePlayer1) { setsPlayer2++; console.log(`Set gagné par ${playerName2}. Score sets: ${setsPlayer1}-${setsPlayer2}`); } else { alert("Égalité! Impossible de déterminer le vainqueur du set."); actionHistory.pop(); updateUndoButtonState(); return; } scorePlayer1 = 0; scorePlayer2 = 0; updateScoreDisplay(); }
+      function getMasteryLevelText(percentage) { if (percentage > 60) return "Très Satisfaisante"; if (percentage > 40) return "Satisfaisante"; if (percentage > 20) return "Fragile"; return "Insuffisante"; }
+      function getMasteryLevelColor(levelText) { switch (levelText) { case "Très Satisfaisante": return [0, 0, 255]; case "Satisfaisante": return [0, 255, 0]; case "Fragile": return [255, 255, 0]; case "Insuffisante": return [255, 0, 0]; default: return [0, 0, 0]; } }
+      function updateChartTitles() { if (chartTitlePlayer1) { chartTitlePlayer1.textContent = `[J1] ${playerName1} - Analyse`; } if (chartTitlePlayer2) { chartTitlePlayer2.textContent = `[J2] ${playerName2} - Analyse`; } }
+      async function exportToPdf() {
+          if (!exportPdfButton) return;
+          exportPdfButton.disabled = true;
+          exportPdfButton.innerHTML = `<span style="margin-right: 8px; font-size: 1.2em;">⏳</span> Génération...`;
+
+          const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+          const margin = 15; const pageWidth = pdf.internal.pageSize.getWidth(); const pageHeight = pdf.internal.pageSize.getHeight(); const contentWidth = pageWidth - 2 * margin; let yPos = margin;
+
+          try {
+              const canvasOptions = { scale: 2, useCORS: true, backgroundColor: '#ffffff' };
+              const [chart1Canvas, chart2Canvas, courtCanvas] = await Promise.all([ html2canvas(chartWrapperP1, canvasOptions), html2canvas(chartWrapperP2, canvasOptions), html2canvas(courtArea, canvasOptions) ]);
+              const chart1ImgData = chart1Canvas.toDataURL('image/png'); const chart2ImgData = chart2Canvas.toDataURL('image/png'); const courtImgData = courtCanvas.toDataURL('image/png');
+
+              pdf.setFontSize(18); pdf.setFont("helvetica", "bold"); pdf.text("Rapport BadTracker", pageWidth / 2, yPos, { align: 'center' }); yPos += 8;
+              pdf.setFontSize(10); pdf.setFont("helvetica", "normal"); pdf.text(`Date: ${new Date().toLocaleDateString('fr-FR')}`, pageWidth / 2, yPos, { align: 'center' }); yPos += 10;
+              pdf.setFontSize(12); pdf.setFont("helvetica", "bolditalic"); pdf.text(`${playerName1} vs ${playerName2}`, pageWidth / 2, yPos, { align: 'center' }); yPos += 12;
+
+              pdf.setFontSize(14); pdf.setFont("helvetica", "bold"); pdf.text("Niveaux de Maîtrise", margin, yPos); yPos += 6;
+              pdf.setFontSize(11); pdf.setFont("helvetica", "normal"); pdf.setTextColor(0, 0, 0);
+
+              const dataP1Stats = [statistics.player2.hitsReceived.comfort + statistics.player1.impactsMade.comfort, statistics.player2.hitsReceived.validOther + statistics.player1.impactsMade.validOther, statistics.player2.hitsReceived.invalid + statistics.player1.impactsMade.invalidFault];
+              const sumP1Stats = dataP1Stats.reduce((a, b) => a + b, 0); const percentExcentreesP1PDF = sumP1Stats > 0 ? (dataP1Stats[1] / sumP1Stats) * 100 : 0;
+              const masteryP1Text = getMasteryLevelText(percentExcentreesP1PDF); const masteryP1Color = getMasteryLevelColor(masteryP1Text);
+
+              const dataP2Stats = [statistics.player1.hitsReceived.comfort + statistics.player2.impactsMade.comfort, statistics.player1.hitsReceived.validOther + statistics.player2.impactsMade.validOther, statistics.player1.hitsReceived.invalid + statistics.player2.impactsMade.invalidFault];
+              const sumP2Stats = dataP2Stats.reduce((a, b) => a + b, 0); const percentExcentreesP2PDF = sumP2Stats > 0 ? (dataP2Stats[1] / sumP2Stats) * 100 : 0;
+              const masteryP2Text = getMasteryLevelText(percentExcentreesP2PDF); const masteryP2Color = getMasteryLevelColor(masteryP2Text);
+
+              pdf.text(`${playerName1}:`, margin + 5, yPos); pdf.setFont("helvetica", "bold"); pdf.setTextColor(...masteryP1Color); pdf.text(masteryP1Text, margin + 35, yPos); pdf.setTextColor(0, 0, 0); yPos += 6;
+              pdf.setFont("helvetica", "normal"); pdf.text(`${playerName2}:`, margin + 5, yPos); pdf.setFont("helvetica", "bold"); pdf.setTextColor(...masteryP2Color); pdf.text(masteryP2Text, margin + 35, yPos); pdf.setTextColor(0, 0, 0); yPos += 10;
+
+
+              pdf.setFontSize(14); pdf.setFont("helvetica", "bold"); pdf.text("Scores", margin, yPos); yPos += 6;
+              pdf.autoTable({ startY: yPos, head: [['Joueur', 'Sets Gagnés', 'Score Actuel']], body: [ [playerName1, setsPlayer1, scorePlayer1], [playerName2, setsPlayer2, scorePlayer2], ], theme: 'grid', headStyles: { fillColor: [64, 140, 218] }, margin: { left: margin, right: margin } });
+              yPos = pdf.lastAutoTable.finalY + 10;
+
+               const chartHeight = 60; const chartWidth = (contentWidth / 2) - 5;
+               if (yPos + chartHeight > pageHeight - margin) { pdf.addPage(); yPos = margin; }
+               pdf.setFontSize(14); pdf.setFont("helvetica", "bold"); pdf.text("Analyse des Zones", margin, yPos); yPos += 6;
+               pdf.addImage(chart1ImgData, 'PNG', margin, yPos, chartWidth, chartHeight);
+               pdf.addImage(chart2ImgData, 'PNG', margin + chartWidth + 10, yPos, chartWidth, chartHeight);
+               yPos += chartHeight + 10;
+
+               const courtRatio = courtCanvas.height / courtCanvas.width; const courtWidth = contentWidth * 0.8; const courtHeight = courtWidth * courtRatio; const courtX = margin + (contentWidth - courtWidth) / 2;
+               if (yPos + courtHeight > pageHeight - margin) { pdf.addPage(); yPos = margin; }
+               pdf.setFontSize(14); pdf.setFont("helvetica", "bold"); pdf.text("Visualisation Terrain", margin, yPos); yPos += 6;
+               pdf.addImage(courtImgData, 'PNG', courtX, yPos, courtWidth, courtHeight);
+               yPos += courtHeight + 10;
+
+               if (yPos > pageHeight - margin - 20) { pdf.addPage(); yPos = margin; }
+               pdf.setFontSize(14); pdf.setFont("helvetica", "bold"); pdf.text("Statistiques Détaillées par Zone", margin, yPos); yPos += 6;
+               const statsBody = [];
+               for (const zone in statistics.rawZones) { if (statistics.rawZones.hasOwnProperty(zone)) { const data = statistics.rawZones[zone]; statsBody.push([zone, data.hits || 0, data.impactsIn || 0, data.impactsFault || 0]); } }
+               if (statsBody.length > 0) {
+                   pdf.autoTable({ startY: yPos, head: [['Zone', 'Volants Reçus', 'Points Marqués', 'Fautes Directes']], body: statsBody, theme: 'striped', headStyles: { fillColor: [51, 51, 51] }, margin: { left: margin, right: margin } });
+                   yPos = pdf.lastAutoTable.finalY + 10;
+               } else { pdf.setFontSize(10); pdf.setFont("helvetica", "italic"); pdf.text("Aucune statistique de zone enregistrée.", margin, yPos); yPos += 10; }
+
+              const totalPages = pdf.internal.getNumberOfPages();
+              for (let i = 1; i <= totalPages; i++) { pdf.setPage(i); pdf.setFontSize(8); pdf.setFont("helvetica", "italic"); pdf.text(`Page ${i} sur ${totalPages} - Rapport BadTracker`, pageWidth / 2, pageHeight - 8, { align: 'center' }); }
+
+              pdf.save(`BadTracker_Stats_${playerName1}_vs_${playerName2}.pdf`);
+
+          } catch (error) { console.error("Erreur lors de la génération du PDF:", error); alert("Une erreur est survenue lors de la génération du PDF."); }
+          finally { exportPdfButton.disabled = false; exportPdfButton.innerHTML = `<span style="margin-right: 8px; font-size: 1.2em;">📄</span> Exporter les stats`; }
+      }
+
+      // PWA Specific Code
+      // Détection de l'état de connexion
+      function updateOnlineStatus() {
+        const offlineIndicator = document.querySelector('.offline-indicator');
+        if (offlineIndicator) {
+          if (navigator.onLine) {
+            offlineIndicator.style.display = 'none';
+          } else {
+            offlineIndicator.style.display = 'block';
+            offlineIndicator.textContent = 'Mode hors ligne activé';
+          }
+        }
+      }
+
+      // Gestion de l'installation de la PWA
+      let deferredPrompt;
+      const installPrompt = document.getElementById('installPrompt');
+      const installButton = document.getElementById('installButton');
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        // Empêcher Chrome d'afficher automatiquement l'invite d'installation
+        e.preventDefault();
+        // Stocker l'événement pour pouvoir le déclencher plus tard
+        deferredPrompt = e;
+        // Afficher notre propre invite d'installation
+        if (installPrompt) installPrompt.style.display = 'block';
+      });
+
+      if (installButton) {
+        installButton.addEventListener('click', async () => {
+          if (!deferredPrompt) return;
+          
+          // Affichage de l'invite d'installation
+          deferredPrompt.prompt();
+          
+          // Attendre que l'utilisateur réponde à l'invite
+          const { outcome } = await deferredPrompt.userChoice;
+          console.log(`User response to the install prompt: ${outcome}`);
+          
+          // Nous n'avons plus besoin de l'événement différé
+          deferredPrompt = null;
+          
+          // Cacher notre invite d'installation quel que soit le résultat
+          installPrompt.style.display = 'none';
+        });
+      }
+
+      // Masquer l'invite d'installation si l'application est déjà installée
+      window.addEventListener('appinstalled', () => {
+        console.log('App was installed');
+        if (installPrompt) installPrompt.style.display = 'none';
+        deferredPrompt = null;
+      });
+
+      // Vérifier si l'application est déjà installée au chargement
+      if (window.matchMedia('(display-mode: standalone)').matches) {
+        console.log('App is already installed');
+        if (installPrompt) installPrompt.style.display = 'none';
+      }
+
+      // Écouter les changements d'état de connexion
+      window.addEventListener('online', updateOnlineStatus);
+      window.addEventListener('offline', updateOnlineStatus);
+      updateOnlineStatus(); // Vérifier l'état initial
+
+      // Association des écouteurs
+      courtArea.addEventListener('mousedown', handlePressStart);
+      courtArea.addEventListener('mouseup', handlePressEnd);
+      courtArea.addEventListener('mouseleave', handleLeaveOrCancel);
+      courtArea.addEventListener('touchstart', handlePressStart, { passive: false });
+      courtArea.addEventListener('touchend', handlePressEnd, { passive: false });
+      courtArea.addEventListener('touchcancel', handleLeaveOrCancel);
+      resetButton.addEventListener('click', resetGame);
+      undoButton.addEventListener('click', undoLastAction);
+      window.addEventListener('resize', () => { if (chartP1Instance && chartP2Instance) { const dataP1 = chartP1Instance.data.datasets[0].data; const dataP2 = chartP2Instance.data.datasets[0].data; const sumP1 = dataP1.reduce((a, b) => a + b, 0); const percentExcentreesP1 = sumP1 > 0 ? (dataP1[1] / sumP1) * 100 : 0; const sumP2 = dataP2.reduce((a, b) => a + b, 0); const percentExcentreesP2 = sumP2 > 0 ? (dataP2[1] / sumP2) * 100 : 0; updateMasteryGauges(percentExcentreesP1, percentExcentreesP2); } else { updateMasteryGauges(0, 0); } });
+      playerName1Display.addEventListener('click', () => editName(1));
+      playerName2Display.addEventListener('click', () => editName(2));
+      if (timerStartPauseButton) { timerStartPauseButton.addEventListener('click', handleStartPauseClick); }
+      if (timerResetButton) { timerResetButton.addEventListener('click', resetTimer); }
+      if (timerLimitInput) { timerLimitInput.addEventListener('input', handleLimitChange); }
+      if (nextSetButton) { nextSetButton.addEventListener('click', handleNextSet); }
+      if (exportPdfButton) { exportPdfButton.addEventListener('click', exportToPdf); }
+
+      // Initialisation
+      initializeStats();
+      updateScoreDisplay();
+      updatePlayerNameDisplays();
+      initializeCharts();
+      updateUndoButtonState();
+      updateTimerDisplay();
+      handleLimitChange();
+      updateChartTitles(); // Appel initial
+    });
+  </script>
+
+  <!-- Registre du service worker -->
+  <script src="./register-sw.js"></script>
+</body>
+</html>
