@@ -1,4 +1,4 @@
-const CACHE_NAME = 'badtracker-v1';
+const CACHE_NAME = 'badtracker-v2';
 
 // Liste des ressources à mettre en cache
 const RESOURCES_TO_CACHE = [
