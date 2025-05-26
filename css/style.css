@@ -1,0 +1,436 @@
+/* MODIFICATION FOND BODY: Définition de l'animation du dégradé */
+@keyframes animatedGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* CSS Base */
+body {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start; /* Commence par le haut */
+  align-items: center;
+  min-height: 100vh;
+  /* MODIFICATION FOND BODY: Remplacement du fond gris par un dégradé animé */
+  background: linear-gradient(-45deg, #a0d8ef, #4a90e2, #50e3c2, #87ceeb); /* Bleu clair, Bleu, Turquoise, Bleu ciel */
+  background-size: 400% 400%; /* Taille large pour l'animation */
+  animation: animatedGradient 15s ease infinite; /* Application de l'animation */
+  font-family: sans-serif;
+  padding: 10px 15px 15px 15px;
+  gap: 10px;
+  box-sizing: border-box;
+  touch-action: manipulation; /* Améliore la gestion tactile sur mobiles */
+  -webkit-tap-highlight-color: transparent; /* Supprime la surbrillance au toucher */
+  overscroll-behavior: none; /* Empêche le comportement de défilement natif */
+  margin: 0;
+}
+.main-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 1200px; /* Largeur max globale */
+  gap: 10px;
+}
+
+/* Conteneur flex pour l'alignement */
+.controls {
+  display: flex;
+  align-items: center; /* Alignement vertical */
+  justify-content: space-between; /* Pousse titre/bouton aux extrémités */
+  gap: 20px; /* Espace entre les éléments */
+  width: 100%;
+  max-width: 1090px; /* Largeur max pour correspondre au contenu aligné */
+  margin: 10px auto 15px auto; /* Réduit margin-top et margin-bottom */
+  padding: 0 10px; /* Ajouter un peu de padding latéral */
+  box-sizing: border-box;
+}
+
+/* Styles H2 ajustés */
+.controls h2 {
+  font-family: "Comic Sans MS", cursive, sans-serif;
+  font-size: 1.8em;
+  font-weight: bold;
+  font-style: italic;
+  color: white;
+  background: linear-gradient(45deg, #4a90e2, #50e3c2);
+  padding: 6px 15px;
+  border-radius: 18px;
+  display: inline-block;
+  margin: 0 0 0 -30px; /* Marge négative à gauche conservée */
+  box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.2);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+  order: 1;
+  text-align: center;
+  width: 180px;
+  flex-shrink: 0;
+}
+
+
+/* Scoreboard */
+.score-board {
+    font-size: 1.8em;
+    font-weight: bold;
+    background-color: #333;
+    color: #fff;
+    padding: 8px 15px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    width: auto;
+    order: 2;
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 200px;
+    margin: 0;
+}
+.score-board span.player-score-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    text-align: center;
+    flex-basis: 48%;
+    justify-content: space-between;
+}
+#scorePlayer1Container { background-color: #4a90e2; }
+#scorePlayer2Container { background-color: #e74c3c; }
+#setScorePlayer1, #setScorePlayer2 {
+    font-size: 0.8em;
+    opacity: 0.8;
+    margin: 0 2px;
+}
+
+/* Styles nom joueur */
+.player-name { cursor: pointer; padding: 2px 4px; border-radius: 3px; transition: background-color 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; display: inline-block; }
+.player-name:hover { background-color: rgba(255, 255, 255, 0.2); }
+.player-name-input { background-color: rgba(255, 255, 255, 0.9); color: #333; border: none; border-radius: 3px; padding: 2px 4px; font-size: 0.9em; font-family: inherit; font-weight: bold; width: 130px; box-sizing: border-box; text-align: center; }
+
+/* Bouton Set Suivant */
+#nextSetButton {
+    padding: 10px 15px;
+    font-size: 1em;
+    cursor: pointer;
+    background-color: #5cb85c;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    transition: background-color 0.2s;
+    flex-shrink: 0;
+    margin: 0;
+    order: 3;
+    height: fit-content;
+    width: 180px;
+    text-align: center;
+}
+#nextSetButton:hover { background-color: #4cae4c; }
+#nextSetButton:disabled { opacity: 0.6; cursor: not-allowed; }
+
+
+/* --- CSS Jauge --- */
+
+/* Conteneur Terrain et Jauges */
+.court-and-gauges-container { display: flex; justify-content: center; align-items: flex-start; width: 100%; gap: 15px; flex-wrap: wrap; }
+#courtArea { padding: 40px; background-color: #e0e0e0; display: inline-block; cursor: crosshair; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-radius: 5px; line-height: 0; position: relative; -webkit-tap-highlight-color: transparent; flex-shrink: 0; margin-top: 0; }
+#badmintonCourt { background-color: #f8f8f8; max-width: 100%; height: auto; display: block; }
+#markersOverlay { position: absolute; top: 40px; left: 40px; height: 305px; width: 670px; pointer-events: none; }
+/* Styles Marqueurs */
+.marker { pointer-events: none; position: absolute; transform: translate(-50%, -50%); box-sizing: border-box; }
+.hit-marker { background-color: rgba(160, 216, 239, 0.7); border: 1px solid #3498db; width: 6px; height: 6px; border-radius: 50%; }
+.impact-marker-in { background-color: rgba(243, 156, 18, 0.7); border: 1px solid #d35400; width: 10px; height: 10px; border-radius: 50%; }
+.impact-marker-fault { width: 12px; height: 12px; }
+.impact-marker-fault::before, .impact-marker-fault::after { content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 3px; background-color: red; transform-origin: center; margin-top: -1.5px; }
+.impact-marker-fault::before { transform: rotate(45deg); } .impact-marker-fault::after { transform: rotate(-45deg); }
+
+/* Groupe Jauge (Titre + Jauge) */
+.gauge-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  width: 180px;
+}
+.gauge-group-title {
+    font-size: 0.9em;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 0;
+    text-align: center;
+}
+
+/* Styles Jauges */
+.mastery-gauge {
+    display: flex;
+    width: 100%;
+    height: 300px;
+    border: 1px solid #aaa;
+    background-color: #f8f8f8;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.gauge-bar-container { width: 25px; height: 100%; position: relative; background: linear-gradient(to top, red 0%, red 25%, yellow 25%, yellow 50%, lime 50%, lime 75%, blue 75%, blue 100%); }
+.gauge-cursor { position: absolute; bottom: 0%; left: 100%; width: 0; height: 0; border-top: 9px solid transparent; border-bottom: 9px solid transparent; border-left: 14px solid black; transform: translateY(50%); transition: bottom 0.4s ease-in-out, left 0.4s ease-in-out; z-index: 2; }
+.gauge-labels-container {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0 8px;
+    border-left: 1px solid #ccc;
+    position: relative;
+    overflow: hidden;
+}
+.gauge-label {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8em;
+    text-align: center;
+    color: #444;
+    line-height: 1.2;
+    border-bottom: none;
+    padding: 5px 0;
+}
+.gauge-separator {
+  position: absolute;
+  background-color: black;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  pointer-events: none;
+}
+.sep-25 { top: 75%; }
+.sep-50 { top: 50%; }
+.sep-75 { top: 25%; }
+
+/* Conteneur Charts + Boutons Row */
+.charts-and-buttons-row { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 20px; width: 100%; margin-top: 15px; }
+
+/* Conteneur Boutons Annuler/Réinitialiser/Export */
+.action-buttons-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 5;
+    margin-top: -10px;
+    margin-bottom: 10px;
+}
+
+/* Conteneurs Graphiques */
+.chart-wrapper {
+    width: 100%;
+    max-width: 300px;
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    text-align: center;
+    flex-shrink: 0;
+    margin-top: 0;
+}
+.chart-wrapper h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.0em;
+    color: #333;
+    font-weight: bold;
+}
+.chart-wrapper canvas { max-width: 100%; height: auto; }
+
+/* Bouton Annuler */
+#undoButton { padding: 8px 12px; font-size: 0.9em; cursor: pointer; background-color: #f39c12; color: white; border: none; border-radius: 5px; transition: background-color 0.2s, opacity 0.3s; display: flex; align-items: center; gap: 5px; }
+#undoButton:hover:not(:disabled) { background-color: #e67e22; }
+#undoButton:disabled { opacity: 0.5; cursor: not-allowed; }
+#undoButton::before { content: '↶'; font-size: 1.4em; line-height: 1; }
+
+/* Bouton Reset */
+#resetButton { padding: 10px 20px; font-size: 1.1em; cursor: pointer; background-color: #bdc3c7; color: white; border: none; border-radius: 5px; transition: background-color 0.2s; }
+#resetButton:hover { background-color: #95a5a6; }
+
+/* Styles pour le Timer */
+.timer-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    max-width: 180px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    box-sizing: border-box;
+    background-color: #f8f9fa;
+}
+#timerDisplay { background-color: #a0d8ef; color: #333; padding: 8px 15px; font-size: 1.1em; font-weight: bold; border-radius: 5px; text-align: center; min-width: 100px; width: 100%; box-sizing: border-box; transition: background-color 0.3s, color 0.3s; }
+#timerDisplay.timer-over-limit { background-color: #e74c3c; color: white; }
+.timer-controls { display: flex; justify-content: center; gap: 10px; width: 100%; }
+.timer-controls button { padding: 5px 10px; font-size: 0.9em; cursor: pointer; background-color: #dfe6e9; color: #333; border: 1px solid #b2bec3; border-radius: 4px; transition: background-color 0.2s; min-width: 60px; }
+.timer-controls button:hover { background-color: #b2bec3; }
+.timer-limit-container { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 0.8em; color: #555; width: 100%; }
+#timerLimitInput { padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; width: 80px; text-align: center; font-size: 1em; }
+
+/* Style pour le bouton d'export */
+#exportPdfButton {
+    padding: 10px 15px;
+    font-size: 1em;
+    cursor: pointer;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    transition: background-color 0.2s, opacity 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    max-width: 180px;
+    justify-content: center;
+}
+#exportPdfButton:hover:not(:disabled) { background-color: #218838; }
+#exportPdfButton:disabled { opacity: 0.65; cursor: not-allowed; }
+#exportPdfButton span:first-of-type { margin-right: 8px; font-size: 1.2em; }
+
+/* COPYRIGHT NOTICE: Nouveaux styles */
+#copyright-notice {
+    font-size: 0.7em; /* Petite taille */
+    color: #6c757d;   /* Couleur gris discret */
+    text-align: center; /* Centré */
+    margin-top: 10px;  /* Espace après le bouton export */
+    width: 100%;       /* Pour occuper l'espace et centrer */
+    line-height: 1.3;  /* Espacement lignes */
+}
+
+/* Styles spécifiques pour PWA */
+.install-prompt {
+    padding: 10px 15px;
+    margin: 10px 0;
+    background-color: #4a90e2;
+    color: white;
+    border-radius: 8px;
+    text-align: center;
+    display: none; /* Caché par défaut */
+    width: 100%;
+    max-width: 300px;
+}
+.install-prompt button {
+    margin-top: 8px;
+    padding: 5px 15px;
+    background-color: white;
+    color: #4a90e2;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+.offline-indicator {
+    position: fixed;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(51, 51, 51, 0.8);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 5px;
+    font-size: 0.8em;
+    z-index: 1000;
+    display: none;
+}
+
+
+/* Media Queries */
+@media (max-width: 1100px) {
+    .controls { max-width: 960px; gap: 15px; margin-top: 10px; }
+    .controls h2 { font-size: 1.6em; padding: 5px 12px; width: 150px; margin-left: -15px;}
+    #nextSetButton { padding: 8px 12px; font-size: 0.9em; width: 150px;}
+
+    .court-and-gauges-container { flex-direction: column; align-items: center; gap: 15px; }
+    #courtArea { margin-top: 0; }
+    .gauge-group { width: 250px; }
+    .mastery-gauge { width: 100%; height: 150px; flex-direction: column; }
+    .gauge-bar-container { width: 100%; height: 20px; background: linear-gradient(to right, red 0%, red 25%, yellow 25%, yellow 50%, lime 50%, lime 75%, blue 75%, blue 100%); }
+    .gauge-cursor { bottom: 100%; left: 0%; border-left: 9px solid transparent; border-right: 9px solid transparent; border-top: 14px solid black; transform: translateX(-50%); border-bottom: none; }
+    .gauge-labels-container { flex-direction: row; border-left: none; border-top: 1px solid #ccc; padding: 5px 0; width: 100%; box-sizing: border-box; }
+    .gauge-label { border-bottom: none; border-right: none; font-size: 0.7em; padding: 0 4px; }
+    .gauge-separator { top: 0; width: 1px; height: 100%; }
+    .sep-25 { left: 25%; } .sep-50 { left: 50%; } .sep-75 { left: 75%; }
+
+    .charts-and-buttons-row { flex-direction: column; align-items: center; gap: 10px; margin-top: 15px; }
+    .chart-wrapper { margin-top: 0; }
+    .chart-wrapper h3 { font-size: 1.0em; }
+    .action-buttons-container { gap: 8px; margin-top: 10px; }
+    #undoButton { padding: 6px 10px; font-size: 0.8em; }
+    #undoButton::before { font-size: 1.2em; }
+    #resetButton { padding: 8px 15px; font-size: 1em;}
+    .timer-container { max-width: 160px; padding: 8px; }
+    #timerDisplay { padding: 6px 12px; font-size: 1em;}
+    .timer-controls button { padding: 4px 8px; font-size: 0.8em; min-width: 50px;}
+    #exportPdfButton { padding: 8px 12px; font-size: 0.9em; max-width: 160px; }
+    #exportPdfButton span:first-of-type { font-size: 1.1em; }
+    /* COPYRIGHT NOTICE: Ajustement marge tablette */
+    #copyright-notice { font-size: 0.65em; margin-top: 8px; }
+}
+
+@media (max-width: 768px) {
+  .controls { gap: 10px; margin-top: 10px; }
+  .controls h2 { font-size: 1.5em; padding: 5px 10px; width: 120px; margin-left: -10px;}
+  #nextSetButton { padding: 7px 10px; font-size: 0.8em; width: 120px;}
+
+  .score-board { font-size: 1.4em; flex-grow: 1; }
+  .score-board span.player-score-container { flex-basis: auto; width: 100%; justify-content: space-between !important; font-size: 0.9em; gap: 5px; }
+  .player-name { max-width: 80px; }
+  .player-name-input { width: 70px; }
+  .chart-wrapper { max-width: 280px; }
+  .chart-wrapper h3 { font-size: 0.9em; }
+  .gauge-group { width: 90%; max-width: 250px; }
+  #exportPdfButton { max-width: 140px; }
+  .timer-container { max-width: 140px; }
+}
+@media (max-width: 480px) {
+  .controls { flex-wrap: wrap; justify-content: center; max-width: 100%; margin-top: 10px; }
+  .controls h2 { font-size: 1.2em; padding: 4px 8px; width: auto; margin-left: 0; margin-bottom: 10px;}
+  #nextSetButton { width: auto; margin-bottom: 10px; }
+  .score-board { order: 2; width: 90%; margin: 0 auto 10px auto; flex-grow: 0;}
+  #nextSetButton { order: 3; }
+
+  .score-board { font-size: 1.2em; }
+  .score-board span.player-score-container { gap: 3px; font-size: 0.8em;}
+  #setScorePlayer1, #setScorePlayer2 { font-size: 0.7em; margin: 0 1px;}
+  .player-name { max-width: 60px; }
+  .player-name-input { width: 55px; }
+  .mastery-gauge { height: auto; }
+  .gauge-labels-container { font-size: 0.9em; flex-wrap: wrap; justify-content: space-around; padding: 5px 0; }
+  .gauge-label { font-size: 0.65em; flex-basis: 45%; text-align: center; border-right: none; border-bottom: none; padding: 2px 4px; }
+  .gauge-separator { display: none; }
+
+  #courtArea { padding: 20px; margin-top: 10px; }
+  #markersOverlay { top: 20px; left: 20px; }
+  .timer-container { max-width: 140px; padding: 6px; }
+  #timerDisplay { font-size: 0.9em;}
+  .timer-controls button { font-size: 0.75em; min-width: 45px;}
+  .timer-limit-container { font-size: 0.75em; }
+  #timerLimitInput { width: 60px; }
+  .chart-wrapper { margin-top: 0; }
+  .chart-wrapper h3 { font-size: 0.8em; }
+  .gauge-group { width: 90%; }
+  #exportPdfButton { max-width: 140px; padding: 6px 10px; font-size: 0.8em; }
+  #exportPdfButton span:first-of-type { font-size: 1em; }
+  /* COPYRIGHT NOTICE: Ajustement taille/marge */
+  #copyright-notice { font-size: 0.6em; margin-top: 6px; }
+}
+
+/* Pour éviter le pull-to-refresh */
+html, body {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
